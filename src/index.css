@@ -1,0 +1,4 @@
+html {
+  -webkit-text-size-adjust: 100%; /* Hỗ trợ cũ */
+  text-size-adjust: 100%;         /* Hỗ trợ hiện đại */
+}
