@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 // import SideBar ;
+import MiniChatBox from "../Modules/MiniChatBox/MiniChatBox";
 import SideBar from "../Modules/User/Sibebar/Sidebar";
 interface PrivateLayoutProps{
     children: React.ReactNode;
@@ -18,6 +19,7 @@ export const PrivateLayout = ({children}: PrivateLayoutProps) =>{
             {/* children of side bar */}
            {children ? children : <Outlet />}
            </main>
+           <MiniChatBox/>
          </div>   
         )
     }

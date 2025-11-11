@@ -4,29 +4,37 @@ import type { Event } from "../types/event";
 import { eventService } from "../Services/eventService";
 import EventForm from "./EventForm";
 
-export default function EventList({ userId }: { userId: string }) {
+export default function EventList({ 
+  userId, 
+  refreshTrigger = 0 
+}: { 
+  userId: string; 
+  refreshTrigger?: number; 
+}) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewEvent, setViewEvent] = useState<Event | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null); // <-- Thêm state này
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const loadEvents = () => {
+    setLoading(true);
     eventService.getByUserId(userId)
       .then(setEvents)
       .finally(() => setLoading(false));
   };
 
+  // 👇 Fetch lại khi userId hoặc refreshTrigger thay đổi
   useEffect(() => {
     loadEvents();
-  }, [userId]);
+  }, [userId, refreshTrigger]);
 
   const handleDelete = async (id: string) => {
     await eventService.delete(id);
-    setDeleteConfirmId(null); // Đóng modal sau khi xóa
-    loadEvents();
+    setDeleteConfirmId(null);
+    loadEvents(); // Hoặc có thể gọi onEventChange nếu được truyền vào
   };
 
   const handleSuccess = () => {
@@ -81,7 +89,7 @@ export default function EventList({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* Danh sách sự kiện có thể cuộn */}
+      {/* Danh sách sự kiện */}
       <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded p-2 bg-gray-50">
         {filteredEvents.length === 0 ? (
           <p className="text-gray-500 text-center py-4">Không có sự kiện nào phù hợp.</p>
@@ -111,7 +119,7 @@ export default function EventList({ userId }: { userId: string }) {
                   Sửa
                 </button>
                 <button
-                  onClick={() => setDeleteConfirmId(event.id)} // Mở modal xác nhận
+                  onClick={() => setDeleteConfirmId(event.id)}
                   className="text-red-500 hover:underline text-sm"
                 >
                   Xóa
@@ -152,8 +160,8 @@ export default function EventList({ userId }: { userId: string }) {
 
       {/* Modal xác nhận xóa */}
       {deleteConfirmId && (
-        <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-10 rounded-lg border-4 border-primary shadow-xl w-80 max-w-[90vw]">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg border border-gray-300 shadow-xl w-80 max-w-[90vw]">
             <h3 className="text-lg font-semibold text-gray-800">Xác nhận xóa</h3>
             <p className="mt-2 text-gray-600">
               Bạn có chắc muốn xóa sự kiện này? Hành động này không thể hoàn tác.
