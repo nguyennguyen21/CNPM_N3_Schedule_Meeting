@@ -1,29 +1,27 @@
 // src/Pages/Events/EventPage.tsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // 👈 Thêm useNavigate
+import { useNavigate } from 'react-router-dom';
 import EventList from "../../Modules/Events/Components/EventList";
 import WeeklyCalendar from '../../Modules/Calander/Calender';
 
 export const EventPage = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const navigate = useNavigate(); // 👈
+  const [refreshKey, setRefreshKey] = useState(0); // 👈 Dùng để trigger re-fetch
+  const navigate = useNavigate();
 
   useEffect(() => {
     const storedUserId = localStorage.getItem('userId');
-    
     if (!storedUserId) {
-      navigate('/login', { replace: true }); // 👈 Điều hướng an toàn
+      navigate('/login', { replace: true });
       return;
     }
-
     setUserId(storedUserId);
     setLoading(false);
-  }, [navigate]); // 👈 Thêm navigate vào deps
+  }, [navigate]);
 
   const handleEventChange = () => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey(prev => prev + 1); // 👈 Tăng key → re-render cả 2 component
   };
 
   if (loading || !userId) {
@@ -34,12 +32,11 @@ export const EventPage = () => {
     <>
       <EventList 
         userId={userId} 
-        key={`event-list-${refreshKey}`} 
-        onEventChange={handleEventChange} // 👈 Truyền callback nếu cần
+        onEventChange={handleEventChange} // 👈 Truyền callback
       />
       <WeeklyCalendar 
-        key={`weekly-calendar-${refreshKey}`} 
-        userId={userId} // 👈 Đảm bảo WeeklyCalendar cũng nhận userId
+        userId={userId}
+        refreshKey={refreshKey} // 👈 Truyền refreshKey để WeeklyCalendar theo dõi
       />
     </>
   );

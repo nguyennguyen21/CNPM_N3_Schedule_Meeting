@@ -1,6 +1,10 @@
-// src/Modules/Meeting/MeetingRoom.tsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { FaCamera } from "react-icons/fa";
+import { FiCameraOff } from "react-icons/fi";
+import { LiaMicrophoneSolid, LiaMicrophoneSlashSolid } from "react-icons/lia";
+import { PiChatCenteredLight, PiChatCenteredSlash } from "react-icons/pi";
+import { TbDeviceDesktopShare } from "react-icons/tb";
 import {
   HubConnection,
   HubConnectionBuilder,
@@ -15,6 +19,77 @@ interface ChatMessage {
 const MeetingRoom = () => {
   const { meetingId } = useParams<{ meetingId: string }>();
   const navigate = useNavigate();
+
+  // === INSTANCE ID CHO TAB NÀY (duy nhất) ===
+  const currentInstanceId = useRef<string>(Date.now().toString());
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const [isKicked, setIsKicked] = useState(false);
+
+  // === NGĂN MULTI-TAB: TỰ ĐỘNG KICK TAB CŨ ===
+  useEffect(() => {
+    if (!meetingId) return;
+
+    const userId = localStorage.getItem("userId") || localStorage.getItem("username") || "anonymous";
+    const channel = new BroadcastChannel("meeting-tab-guard");
+    broadcastChannelRef.current = channel;
+
+    // Thông báo: "Tôi (tab này) đang active"
+    const announceSelf = () => {
+      channel.postMessage({
+        type: "TAB_ACTIVE",
+        meetingId,
+        userId,
+        instanceId: currentInstanceId.current,
+        timestamp: Date.now(),
+      });
+    };
+
+    // Gửi ngay khi mount
+    announceSelf();
+
+    // Gửi định kỳ mỗi 5s để đảm bảo tab mới nhất luôn "sống"
+    const interval = setInterval(announceSelf, 5000);
+
+    // Lắng nghe từ các tab khác
+    channel.onmessage = (event) => {
+      const data = event.data;
+      if (
+        data?.type === "TAB_ACTIVE" &&
+        data.meetingId === meetingId &&
+        data.userId === userId &&
+        data.instanceId !== currentInstanceId.current
+      ) {
+        // Nếu tab khác mới hơn → tự động rời
+        if (data.timestamp > Date.now() - 2000) {
+          setIsKicked(true);
+        }
+      }
+    };
+
+    return () => {
+      clearInterval(interval);
+      channel.close();
+    };
+  }, [meetingId]);
+
+  // === XỬ LÝ KHI BỊ KICK ===
+  useEffect(() => {
+    if (isKicked) {
+      // Cleanup sẽ được gọi tự động khi component unmount
+      navigate("/meeting", { replace: true });
+    }
+  }, [isKicked, navigate]);
+
+  if (isKicked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-4">
+        <div className="text-center text-yellow-400 max-w-md">
+          <h2 className="text-2xl font-bold mb-4">🔄 Đang chuyển sang tab khác...</h2>
+          <p className="text-gray-300">Bạn đã mở cuộc họp ở tab mới.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!meetingId) {
     return (
@@ -43,6 +118,7 @@ const MeetingRoom = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(true);
 
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -51,6 +127,13 @@ const MeetingRoom = () => {
   const remoteStreamsRef = useRef<MediaStream[]>([]);
 
   const token = localStorage.getItem("token");
+
+  const stopStream = useCallback((stream: MediaStream | null) => {
+    if (!stream) return;
+    stream.getTracks().forEach((track) => {
+      if (track.readyState === "live") track.stop();
+    });
+  }, []);
 
   const updateTracksForAllPeers = useCallback(() => {
     const currentStream = localStreamRef.current;
@@ -103,67 +186,85 @@ const MeetingRoom = () => {
   }, []);
 
   const toggleVideo = () => {
-    const stream = localStreamRef.current;
+    const stream = cameraStreamRef.current;
     const videoTrack = stream?.getVideoTracks()[0];
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled;
       setIsVideoEnabled(videoTrack.enabled);
-    } else {
-      console.warn("Không tìm thấy video track để bật/tắt");
     }
   };
 
   const toggleAudio = () => {
-    const stream = localStreamRef.current;
+    const stream = cameraStreamRef.current;
     const audioTrack = stream?.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
       setIsAudioEnabled(audioTrack.enabled);
-    } else {
-      console.warn("Không tìm thấy audio track để bật/tắt");
     }
   };
 
   const toggleScreenShare = async () => {
     if (isScreenSharing) {
-      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      stopStream(screenStreamRef.current);
       screenStreamRef.current = null;
 
-      const originalStream = localStreamRef.current;
-      if (originalStream) {
-        localStreamRef.current = originalStream;
-        setLocalStream(originalStream);
+      const cameraStream = cameraStreamRef.current;
+      if (cameraStream) {
+        localStreamRef.current = cameraStream;
+        setLocalStream(cameraStream);
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = originalStream;
+          localVideoRef.current.srcObject = cameraStream;
           localVideoRef.current.play().catch(console.warn);
         }
+      } else {
+        setLocalStream(null);
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
       }
+
       setIsScreenSharing(false);
+      setError(null);
       updateTracksForAllPeers();
     } else {
       try {
+        setError(null);
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: { cursor: "always" },
           audio: false,
         });
 
-        localStreamRef.current?.getTracks().forEach((t) => t.stop());
+        stopStream(screenStreamRef.current);
         screenStreamRef.current = screenStream;
         localStreamRef.current = screenStream;
         setLocalStream(screenStream);
+
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
           localVideoRef.current.play().catch(console.warn);
         }
+
         setIsScreenSharing(true);
         updateTracksForAllPeers();
-      } catch (err) {
+      } catch (err: any) {
         console.error("Screen share error:", err);
-        setError("❌ Không thể chia sẻ màn hình");
+        setIsScreenSharing(false);
+        const cameraStream = cameraStreamRef.current;
+        if (cameraStream) {
+          localStreamRef.current = cameraStream;
+          setLocalStream(cameraStream);
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = cameraStream;
+            localVideoRef.current.play().catch(console.warn);
+          }
+        }
+        if (!(err.name === "NotAllowedError" || err.name === "AbortError")) {
+          setError("❌ Không thể chia sẻ màn hình");
+          setTimeout(() => setError(null), 3000);
+        }
       }
     }
   };
 
+  // === KHỞI TẠO CAMERA/MIC VÀ SIGNALR ===
   useEffect(() => {
     if (!token) {
       setError("❌ Vui lòng đăng nhập");
@@ -174,6 +275,10 @@ const MeetingRoom = () => {
     let isMounted = true;
 
     const init = async () => {
+      stopStream(screenStreamRef.current);
+      stopStream(cameraStreamRef.current);
+      stopStream(localStreamRef.current);
+
       try {
         const configStr = sessionStorage.getItem("meetingConfig");
         const config = configStr
@@ -185,7 +290,6 @@ const MeetingRoom = () => {
               selectedAudioId: "",
             };
 
-        // ✅ LUÔN YÊU CẦU CẢ VIDEO VÀ AUDIO ĐỂ TRACK TỒN TẠI
         const videoConstraint = config.selectedVideoId
           ? { deviceId: { exact: config.selectedVideoId } }
           : { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
@@ -199,9 +303,11 @@ const MeetingRoom = () => {
           audio: audioConstraint,
         });
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          stopStream(stream);
+          return;
+        }
 
-        // ✅ ÁP DỤNG TRẠNG THÁI BẬT/TẮT SAU KHI CÓ TRACK
         const videoTrack = stream.getVideoTracks()[0];
         const audioTrack = stream.getAudioTracks()[0];
 
@@ -209,25 +315,33 @@ const MeetingRoom = () => {
           videoTrack.enabled = config.isVideoEnabled;
           setIsVideoEnabled(config.isVideoEnabled);
         }
-
         if (audioTrack) {
           audioTrack.enabled = config.isAudioEnabled;
           setIsAudioEnabled(config.isAudioEnabled);
         }
 
+        cameraStreamRef.current = stream;
         localStreamRef.current = stream;
         setLocalStream(stream);
         sessionStorage.removeItem("meetingConfig");
       } catch (err: any) {
-        console.error("Camera/mic error:", err);
-        if (isMounted) {
-          setError(`❌ ${err.message || "Không thể truy cập camera/micro"}`);
+        console.error("MediaDevices error:", err);
+        let errorMsg = "❌ Không thể truy cập camera/micro";
+
+        if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          errorMsg = "❌ Thiết bị đang được sử dụng ở nơi khác. Vui lòng đóng tab/app khác và thử lại.";
+        } else if (err.name === "NotAllowedError") {
+          errorMsg = "❌ Bạn đã từ chối quyền truy cập camera/micro.";
+        } else if (err.name === "NotFoundError") {
+          errorMsg = "❌ Không tìm thấy camera hoặc micro.";
         }
+
+        if (isMounted) setError(errorMsg);
         setIsLoading(false);
         return;
       }
 
-      // === SignalR Connection ===
+      // SignalR
       const connection = new HubConnectionBuilder()
         .withUrl(`http://localhost:5030/meetingHub`, {
           accessTokenFactory: () => token,
@@ -263,13 +377,18 @@ const MeetingRoom = () => {
 
     return () => {
       isMounted = false;
-      localStreamRef.current?.getTracks().forEach((t) => t.stop());
-      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+
+      // Dừng mọi stream
+      stopStream(screenStreamRef.current);
+      stopStream(cameraStreamRef.current);
+      stopStream(localStreamRef.current);
+
+      // Đóng kết nối
       Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
       peerConnectionsRef.current = {};
       connectionRef.current?.stop();
     };
-  }, [token, meetingId]);
+  }, [token, meetingId, stopStream]);
 
   const handleSendMessage = () => {
     if (newMessage.trim() && connectionRef.current) {
@@ -333,11 +452,11 @@ const MeetingRoom = () => {
                 />
               </div>
               <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-xs">
-                {isScreenSharing ? "Đang chia sẻ" : "👤 Bạn"}
+                {isScreenSharing ? "Đang chia sẻ" : " Bạn"}
               </div>
               {!isVideoEnabled && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                  <span className="text-white text-lg">Camera đã tắt</span>
+                  <FiCameraOff className="text-white text-2xl" />
                 </div>
               )}
             </div>
@@ -416,46 +535,46 @@ const MeetingRoom = () => {
       <div className="flex justify-center gap-3 mb-4 flex-wrap">
         <button
           onClick={toggleAudio}
-          className={`px-4 py-2.5 rounded-xl font-medium flex flex-col items-center transition-all ${
+          className={`px-4 py-2.5 rounded-full font-medium flex flex-col items-center transition-all ${
             isAudioEnabled
-              ? "bg-white hover:bg-red-600 text-gray-900"
-              : "bg-gray-700 hover:bg-gray-600 text-gray-200"
+              ? "bg-white hover:bg-red-600 text-2xl text-gray-900 py-4"
+              : "bg-gray-700 hover:bg-gray-600 text-2xl text-gray-200 py-4"
           }`}
         >
-          {isAudioEnabled ? " Tắt mic" : " Bật mic"}
+          {isAudioEnabled ? <LiaMicrophoneSlashSolid /> : <LiaMicrophoneSolid />}
         </button>
 
         <button
           onClick={toggleVideo}
-          className={`px-4 py-2.5 rounded-xl font-medium flex flex-col items-center transition-all ${
+          className={`px-4 py-2.5 rounded-full font-medium flex flex-col items-center transition-all ${
             isVideoEnabled
-              ? "bg-white hover:bg-red-600 text-gray-900"
-              : "bg-gray-700 hover:bg-gray-600 text-gray-200"
+              ? "bg-white hover:bg-red-600 text-2xl text-gray-900 py-4"
+              : "bg-gray-700 hover:bg-gray-600 text-2xl text-gray-200 py-4"
           }`}
         >
-          {isVideoEnabled ? " Tắt cam" : " Bật cam"}
+          {isVideoEnabled ? <FiCameraOff /> : <FaCamera />}
         </button>
 
         <button
           onClick={toggleScreenShare}
-          className={`px-4 py-2.5 rounded-xl font-medium flex flex-col items-center transition-all ${
+          className={`px-4 py-2.5 rounded-full font-medium flex flex-col items-center transition-all ${
             isScreenSharing
-              ? "bg-yellow-500 hover:bg-yellow-600 text-black"
-              : "bg-purple-600 hover:bg-purple-700 text-white"
+              ? "bg-yellow-500 hover:bg-yellow-600 text-2xl text-black py-4"
+              : "bg-purple-600 hover:bg-purple-700 text-2xl text-white py-4"
           }`}
         >
-          {isScreenSharing ? " Dừng chia sẻ" : " Chia sẻ màn hình"}
+          {isScreenSharing ? " Dừng chia sẻ" : <TbDeviceDesktopShare />}
         </button>
 
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className={`px-4 py-2.5 rounded-xl font-medium flex flex-col items-center transition-all ${
+          className={`px-4 py-2.5 rounded-full font-medium flex flex-col items-center transition-all ${
             isChatOpen
-              ? "bg-white hover:bg-gray-600 text-gray-900"
-              : "bg-blue-600 hover:bg-blue-700 text-white"
+              ? "bg-white hover:bg-red-600 text-2xl text-gray-900 py-4"
+              : "bg-gray-700 hover:bg-gray-600 text-2xl text-white py-4"
           }`}
         >
-          {isChatOpen ? " Ẩn chat" : " Hiện chat"}
+          {isChatOpen ? <PiChatCenteredSlash /> : <PiChatCenteredLight />}
         </button>
 
         <button

@@ -1,16 +1,20 @@
-// src/components/events/EventList.tsx
+// src/Modules/Events/Components/EventList.tsx
 import { useState, useEffect } from "react";
 import type { Event } from "../types/event";
 import { eventService } from "../Services/eventService";
 import EventForm from "./EventForm";
 
+interface EventListProps {
+  userId: string;
+  refreshTrigger?: number;
+  onEventChange?: () => void; // 👈 Thêm callback
+}
+
 export default function EventList({ 
   userId, 
-  refreshTrigger = 0 
-}: { 
-  userId: string; 
-  refreshTrigger?: number; 
-}) {
+  refreshTrigger = 0,
+  onEventChange 
+}: EventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -26,7 +30,6 @@ export default function EventList({
       .finally(() => setLoading(false));
   };
 
-  // 👇 Fetch lại khi userId hoặc refreshTrigger thay đổi
   useEffect(() => {
     loadEvents();
   }, [userId, refreshTrigger]);
@@ -34,13 +37,15 @@ export default function EventList({
   const handleDelete = async (id: string) => {
     await eventService.delete(id);
     setDeleteConfirmId(null);
-    loadEvents(); // Hoặc có thể gọi onEventChange nếu được truyền vào
+    loadEvents();
+    onEventChange?.(); // 👈 Gọi callback
   };
 
   const handleSuccess = () => {
     setShowForm(false);
     setEditingId(null);
     loadEvents();
+    onEventChange?.(); // 👈 Gọi callback
   };
 
   const filteredEvents = events.filter((event) => {
@@ -54,7 +59,6 @@ export default function EventList({
 
   return (
     <div>
-      {/* Nút thêm và thanh tìm kiếm */}
       <div className="mb-4 flex flex-col sm:flex-row gap-2">
         <button
           onClick={() => setShowForm(true)}
@@ -71,7 +75,6 @@ export default function EventList({
         />
       </div>
 
-      {/* Form thêm/sửa */}
       {showForm && (
         <div className="mb-6 p-4 border rounded bg-white shadow-sm">
           <h3 className="mb-2 font-semibold">
@@ -89,7 +92,6 @@ export default function EventList({
         </div>
       )}
 
-      {/* Danh sách sự kiện */}
       <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded p-2 bg-gray-50">
         {filteredEvents.length === 0 ? (
           <p className="text-gray-500 text-center py-4">Không có sự kiện nào phù hợp.</p>
@@ -136,7 +138,7 @@ export default function EventList({
         )}
       </div>
 
-      {/* Modal xem chi tiết */}
+      {/* Modal xem chi tiết + xóa — giữ nguyên như cũ */}
       {viewEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded w-96 max-w-[90vw] shadow-lg">
@@ -158,7 +160,6 @@ export default function EventList({
         </div>
       )}
 
-      {/* Modal xác nhận xóa */}
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg border border-gray-300 shadow-xl w-80 max-w-[90vw]">

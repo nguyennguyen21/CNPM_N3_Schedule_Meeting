@@ -1,6 +1,6 @@
 import axios from "axios"
 const Port = 5030
-const BaseUrl = `http://10.0.16.154:${Port}`
+const BaseUrl = `http://localhost:${Port}`
 const Client = axios.create({
     baseURL: BaseUrl,
     headers: {

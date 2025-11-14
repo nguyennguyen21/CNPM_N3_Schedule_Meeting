@@ -5,7 +5,7 @@ import { PrivateRoutes } from "../Private/PrivateRoutes";
 import { PublicRoutes } from "../Public/PublicRoutes";
 
 import { PrivateLayout } from "../../Layouts/PrivateLayout";
-
+import { NotFound } from "../../Pages/NotFound/NotFound";
 export const MainRoutes  = () =>{
     return(
         <Routes>
@@ -20,6 +20,7 @@ export const MainRoutes  = () =>{
           }
           />
         ))}
+        <Route path="*" element={<NotFound />} />
         </Routes>
     )
 }

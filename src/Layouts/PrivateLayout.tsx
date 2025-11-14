@@ -15,7 +15,7 @@ export const PrivateLayout = ({children}: PrivateLayoutProps) =>{
          <div className="flex w-full h-min-screen">
             {/* side bar */}
             <SideBar/>
-            <main className="flex-1 w-full p-4 md:p-6 lg:p-8"> 
+            <main className="flex-1 w-full p-2 md:p-2 lg:p-2"> 
             {/* children of side bar */}
            {children ? children : <Outlet />}
            </main>

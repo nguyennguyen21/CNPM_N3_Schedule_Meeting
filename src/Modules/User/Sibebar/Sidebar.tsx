@@ -39,7 +39,7 @@ const SideBar: React.FC = () => {
     // },
     
     {
-      label: "Schedule list",
+      label: "Schedule ",
       icon: (
         
 <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -54,13 +54,37 @@ const SideBar: React.FC = () => {
       path: "/eventForm",
     },
     {
+      label: "Smart Schedule",
+      icon: (
+      
+<svg 
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="white"
+  stroke="#000000"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <rect x="3" y="11" width="18" height="10" rx="2" />
+  <circle cx="12" cy="5" r="2" />
+  <path d="M12 7v4" />
+  <line x1="8" y1="16" x2="8" y2="16" />
+  <line x1="16" y1="16" x2="16" y2="16" />
+</svg>
+      ),
+      path: "/smartschedule",
+    },
+    {
       label: "Profile",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed">
           <path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-240v-32q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v32q0 33-23.5 56.5T720-160H240q-33 0-56.5-23.5T160-240Zm80 0h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z" />
         </svg>
       ),
-      path: "profile.html",
+      path: "/profile",
     },
   ];
 
@@ -85,11 +109,11 @@ const SideBar: React.FC = () => {
       <nav
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } transition-all duration-300 ease-in-out h-screen sticky top-0 self-start bg-primary border-r border-text flex-shrink-0 overflow-hidden`}
+        } transition-all duration-300 ease-in-out h-screen sticky top-0 self-start bg-green-600 border-r border-text flex-shrink-0 overflow-hidden`}
       >
         <ul className="p-1">
           {/* Header */}
-          <li className="flex justify-between items-center mx-2 mb-4">
+          <li className="flex justify-between items-center mx-2 mb-4 text-white">
             <span
               className={`font-semibold text-lg ${
                 sidebarOpen ? "block" : "hidden"
@@ -131,7 +155,7 @@ const SideBar: React.FC = () => {
                     <span
                       className={`${
                         sidebarOpen ? "block" : "hidden"
-                      } text-white`}
+                      } text-black`}
                     >
                       {item.label}
                     </span>

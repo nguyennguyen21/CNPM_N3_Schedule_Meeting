@@ -4,7 +4,8 @@ import MeetingRoom from "../../Modules/MeetingRoom/MeetingRoom";
 import MeetingLobby from "../../Modules/MeetingRoom/MeetingLobby";
 import IntroductionPage from "../../Pages/Introduction/Itroduction";
 import MeetingSetup from "../../Modules/MeetingRoom/MeetingSetup";
-
+import ScheduleConsultantChat from "../../Modules/Chatbox/Chatbox";
+import ProfilePageWithSidebarAndProjectList from "../../Pages/Profile/Profile";
 export const PrivateRoutes:RouteObject[] = [
     {
         path:"/Intro",
@@ -24,6 +25,14 @@ export const PrivateRoutes:RouteObject[] = [
     },
     {
     path: "/meeting",
-    element: <MeetingLobby />, // ← Trang lobby (không có :meetingId)
-  },
+    element: <MeetingLobby />, 
+     },
+    {
+    path: "/smartschedule",
+    element: <ScheduleConsultantChat />, 
+     },
+    {
+    path: "/profile",
+    element: <ProfilePageWithSidebarAndProjectList />, 
+    },
 ]

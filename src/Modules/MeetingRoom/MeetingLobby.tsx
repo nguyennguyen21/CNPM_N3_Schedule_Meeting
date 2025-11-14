@@ -66,7 +66,7 @@ const MeetingLobby = () => {
     if (meetingId) {
       try {
         await navigator.clipboard.writeText(meetingId);
-        alert("✅ Đã sao chép mã phòng!");
+        alert(" Đã sao chép mã phòng!");
       } catch {
         setError("Không thể sao chép. Vui lòng chọn và sao chép thủ công.");
       }
@@ -74,7 +74,7 @@ const MeetingLobby = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary text-white flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-green-600 text-white flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full bg-gray-800 rounded-xl p-6 shadow-lg">
         <h1 className="text-2xl font-bold text-center mb-6">Họp Trực Tuyến</h1>
 
