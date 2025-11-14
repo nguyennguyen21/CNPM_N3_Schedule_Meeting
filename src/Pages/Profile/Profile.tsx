@@ -1,169 +1,136 @@
 // src/components/ProfilePageWithSidebarAndProjectList.tsx
 import React, { useState, useEffect } from 'react';
-import Client from '../../Configs/CNAPI/CNAPI'; // Điều chỉnh đường dẫn nếu cần
-import {
-  DndContext,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import Client from '../../Configs/CNAPI/CNAPI';
+import type { Event } from '../types/event'; // Đảm bảo đường dẫn đúng
 
-// Kiểu dữ liệu
-interface User {
-  id: string;
-  username: string;
-  fullname: string;
-  role: string;
-}
-
-interface Todo {
-  id: string;
-  content: string;
-  completed: boolean;
-}
-
-// --- Todo Item có thể kéo ---
-const SortableTodoItem = ({ todo, toggleTodo }: { todo: Todo; toggleTodo: (id: string) => void }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: todo.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
+// --- Event Card ---
+const EventCard = ({ event }: { event: Event }) => {
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('vi-VN', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
+  const formatTime = (timeStr?: string) => {
+    if (!timeStr) return '';
+    const time = new Date(timeStr);
+    return time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const bgColor = event.color
+    ? event.color
+    : 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700';
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center p-3 mb-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 transition-all ${
-        isDragging ? 'ring-2 ring-blue-400 dark:ring-blue-600' : ''
-      }`}
-      {...attributes}
-    >
-      <input
-        type="checkbox"
-        checked={todo.completed}
-        onChange={() => toggleTodo(todo.id)}
-        className="mr-3 h-5 w-5 text-blue-600 rounded focus:ring-blue-500 dark:focus:ring-blue-700"
-      />
-      <span className={`flex-1 text-base ${todo.completed ? 'line-through text-gray-500' : 'text-gray-800 dark:text-gray-200'}`}>
-        {todo.content}
-      </span>
-      <button {...listeners} className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-grab">
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-        </svg>
-      </button>
+    <div className={`rounded-lg p-4 mb-3 border-l-4 shadow-sm ${bgColor} border-l-4`}>
+      <h3 className="font-bold text-lg text-gray-800 dark:text-white">{event.title}</h3>
+      <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">{event.description || 'Không có mô tả'}</p>
+
+      <div className="mt-3 text-sm space-y-1">
+        {event.startDate && (
+          <div className="flex items-center text-gray-700 dark:text-gray-400">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {formatDate(event.startDate)} {event.endDate && ` → ${formatDate(event.endDate)}`}
+          </div>
+        )}
+
+        {(event.startTime || event.endTime) && (
+          <div className="flex items-center text-gray-700 dark:text-gray-400">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {formatTime(event.startTime)} {event.endTime && ` → ${formatTime(event.endTime)}`}
+          </div>
+        )}
+
+        {event.location && (
+          <div className="flex items-center text-gray-700 dark:text-gray-400">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {event.location}
+          </div>
+        )}
+
+        {event.meetingId && (
+          <div className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded inline-block mt-2">
+            Có cuộc họp
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 // --- Component chính ---
 const ProfilePageWithSidebarAndProjectList = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{ id: string; username: string; fullname: string; role: string } | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Todo list mẫu — bạn có thể thay bằng API sau
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: '1', content: 'Hoàn thành đăng nhập hệ thống', completed: true },
-    { id: '2', content: 'Tạo endpoint /api/users/me', completed: true },
-    { id: '3', content: 'Fix lỗi out-of-range MySQL', completed: false },
-    { id: '4', content: 'Thêm chức năng tạo sự kiện', completed: false },
-    { id: '5', content: 'Kiểm thử với nhiều role', completed: false },
-  ]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // --- Lấy thông tin người dùng khi mount ---
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
-        const response = await Client.get<{
+        // 1. Lấy thông tin người dùng
+        const userRes = await Client.get<{
           id: string;
           username: string;
           fullname: string;
           role: string;
         }>('/api/users/me');
-        setUser(response.data);
+        const userData = userRes.data;
+        setUser(userData);
+
+        // 2. Lấy sự kiện của người dùng
+        const eventsRes = await Client.get<Event[]>(`/api/events/user/${userData.id}`);
+        setEvents(eventsRes.data || []);
       } catch (err: any) {
-        console.error('Lỗi tải profile:', err);
-        if (err.response?.status === 401) {
-          setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-        } else {
-          setError('Không thể tải thông tin người dùng.');
-        }
+        console.error('Lỗi tải dữ liệu profile:', err);
+        setError(err.response?.data?.message || 'Không thể tải dữ liệu. Vui lòng thử lại.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
+    fetchData();
   }, []);
 
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setTodos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
-
-  const toggleTodo = (id: string) => {
-    setTodos((prev) =>
-      prev.map((todo) => (todo.id === id ? { ...todo, completed: !todo.completed } : todo))
-    );
-  };
-
-  // --- Hiển thị loading ---
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-800">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-          <p className="mt-2 text-gray-600 dark:text-gray-300">Đang tải profile...</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-300">Đang tải thông tin...</p>
         </div>
       </div>
     );
   }
 
-  // --- Hiển thị lỗi ---
   if (error) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-800">
-        <div className="text-center p-6 bg-white dark:bg-gray-900 rounded-xl shadow">
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow text-center">
           <p className="text-red-500 mb-4">{error}</p>
           <button
-            onClick={() => window.location.href = '/login'}
+            onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Về trang đăng nhập
+            Thử lại
           </button>
         </div>
       </div>
     );
   }
 
-  // --- Hiển thị profile ---
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-800 pt-12">
       {/* Sidebar Profile */}
@@ -171,7 +138,6 @@ const ProfilePageWithSidebarAndProjectList = () => {
         <div className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-lg border dark:border-gray-700">
           <div className="border-b border-gray-200 dark:border-gray-700 px-4 pb-6">
             <div className="text-center my-5">
-              {/* Avatar: chữ cái đầu của fullname */}
               <div className="mx-auto h-32 w-32 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-md">
                 {user?.fullname
                   ? user.fullname
@@ -185,7 +151,7 @@ const ProfilePageWithSidebarAndProjectList = () => {
                 <h1 className="font-bold text-2xl text-gray-800 dark:text-white">{user?.fullname}</h1>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">@{user?.username}</p>
                 <div className="inline-flex items-center mt-2 px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
-                  <span>{user?.role === 'Admin' ? 'Quản trị viên' : 'Sinh viên'}</span>
+                  {user?.role === 'Admin' ? 'Quản trị viên' : 'Người dùng'}
                 </div>
               </div>
             </div>
@@ -201,31 +167,45 @@ const ProfilePageWithSidebarAndProjectList = () => {
         </div>
       </div>
 
-      {/* Main Content: Todo List */}
+      {/* Main Content: Event List */}
       <div className="flex-1 px-8 py-8 overflow-y-auto">
         <div className="max-w-3xl">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Công việc cần làm</h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Kéo và thả để sắp xếp ưu tiên</p>
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Lịch sự kiện của bạn</h2>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                {events.length} sự kiện được lên lịch
+              </p>
+            </div>
+            <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
+              + Tạo sự kiện mới
+            </button>
           </div>
 
-          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-            <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {todos.map((todo) => (
-                  <SortableTodoItem key={todo.id} todo={todo} toggleTodo={toggleTodo} />
+          {events.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Chưa có sự kiện nào.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {events
+                .sort((a, b) => {
+                  // Sắp xếp theo startDate, rồi startTime
+                  const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+                  const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+                  if (dateA !== dateB) return dateA - dateB;
+                  const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
+                  const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
+                  return timeA - timeB;
+                })
+                .map((event) => (
+                  <EventCard key={event.id} event={event} />
                 ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-
-          {/* Gợi ý thêm (tương lai): nút "Thêm công việc" */}
-          {/* <button className="mt-4 flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-            <svg className="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Thêm công việc mới
-          </button> */}
+            </div>
+          )}
         </div>
       </div>
     </div>
